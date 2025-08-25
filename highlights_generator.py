@@ -5,7 +5,7 @@ import os
 
 VIDEO_PATH = 'video.mp4'
 
-PLAYER_NAME = 'donk666'
+PLAYER_NAME = 'donk'
 
 KILLFEED_REGION = (1050, 100, 220, 150) 
 
