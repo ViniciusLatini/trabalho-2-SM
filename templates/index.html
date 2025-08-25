@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Highlight Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>CS2 Highlight Generator</h1>
+        <form id="uploadForm">
+            <div class="input-group">
+                <label for="video">Selecione o vídeo:</label>
+                <input type="file" id="video" name="video" accept="video/mp4" required>
+            </div>
+            <div class="input-group">
+                <label for="player_name">Nome do jogador (ex: coldzera):</label>
+                <input type="text" id="player_name" name="player_name" required>
+            </div>
+            <button type="submit" id="submitBtn">Gerar Destaques</button>
+        </form>
+
+        <div id="statusSection" class="hidden">
+            <div id="loading">
+                <div class="spinner"></div>
+                <p>Analisando o vídeo, por favor aguarde...</p>
+            </div>
+            <div id="result" class="hidden">
+                <h2>Seus Destaques:</h2>
+                <video id="highlightVideo" controls></video>
+                <a id="downloadLink" href="#" download>Baixar Destaques</a>
+            </div>
+            <div id="error" class="hidden">
+                <p id="errorMessage"></p>
+                <button onclick="window.location.reload()">Tentar Novamente</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const statusSection = document.getElementById('statusSection');
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // Oculta tudo e mostra o loading
+            submitBtn.disabled = true;
+            statusSection.classList.remove('hidden');
+            loadingDiv.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    checkStatus(data.task_id);
+                } else {
+                    showError(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('Erro ao enviar o arquivo.');
+            });
+        });
+
+        function checkStatus(taskId) {
+            const statusInterval = setInterval(() => {
+                fetch(`/status/${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'completed') {
+                            clearInterval(statusInterval);
+                            showResult(data.video_path);
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusInterval);
+                            showError(data.message || 'O processamento falhou.');
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(statusInterval);
+                        showError('Erro ao verificar o status.');
+                        console.error('Erro:', error);
+                    });
+            }, 3000); // Checa a cada 3 segundos
+        }
+
+        function showResult(videoPath) {
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            const highlightVideo = document.getElementById('highlightVideo');
+            const downloadLink = document.getElementById('downloadLink');
+
+            loadingDiv.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+
+            // Define a fonte do vídeo e o link de download
+            highlightVideo.src = `/highlights/${videoPath}`;
+            downloadLink.href = `/highlights/${videoPath}`;
+        }
+
+        function showError(message) {
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = document.getElementById('submitBtn');
+
+            loadingDiv.classList.add('hidden');
+            errorDiv.classList.remove('hidden');
+            errorMessage.textContent = message;
+            submitBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
