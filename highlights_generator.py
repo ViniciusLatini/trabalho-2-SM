@@ -5,7 +5,7 @@ import os
 
 VIDEO_PATH = 'video.mp4'
 
-PLAYER_NAME = 'coldzera'
+PLAYER_NAME = 'donk'
 
 KILLFEED_REGION = (1050, 100, 220, 150) 
 
@@ -51,7 +51,8 @@ def detect_kill_events(video_path, player_name):
             
             try:
                 text = pytesseract.image_to_string(gray_frame)
-                
+                formatted_time = f"{int(current_time_sec // 3600):02d}:{int((current_time_sec % 3600) // 60):02d}:{int(current_time_sec % 60):02d}"
+                print(f"({formatted_time}): {text.strip()}")
                 # Verifica se o nome do jogador está no texto do feed
                 if player_name in text:
                     print(f"Texto detectado no feed: {text.strip()}")
