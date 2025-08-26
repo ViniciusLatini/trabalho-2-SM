@@ -1,17 +1,17 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import threading
 from highlights_generator import generate_highlights
-import time # Para simular o tempo de processamento
+import time # Para simular o tempo de processamento, pode ser removido depois
+import shutil
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
+app.config['DASH_OUTPUT_FOLDER'] = 'dash_output/' # Nova pasta para saída DASH
 
-# Garante que o diretório de uploads existe
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['DASH_OUTPUT_FOLDER'], exist_ok=True)
 
-# Dicionário para rastrear o status de cada trabalho (processo de geração)
 processing_status = {}
 
 @app.route('/')
@@ -19,30 +19,40 @@ def index():
     return render_template('index.html')
 
 def process_video_task(file_path, player_name, task_id):
-    """Função que roda em segundo plano para processar o vídeo."""
+    """
+    Função que roda em segundo plano para processar o vídeo,
+    gerar highlights e convertê-los para DASH.
+    """
     try:
-        # Simula um tempo de processamento para o loading screen
-        time.sleep(3) 
+        print(f"[{task_id}] Iniciando processamento do vídeo: {file_path}")
+        # generate_highlights retornará o caminho relativo do master.mpd (ex: "task_id/master.mpd")
+        dash_manifest_path = generate_highlights(
+            video_input_path=file_path, 
+            player_name=player_name, 
+            clip_duration=10, 
+            task_id=task_id,
+            dash_base_output_dir=app.config['DASH_OUTPUT_FOLDER'] # Passa a pasta base para DASH
+        )
         
-        # Chama a função do seu script para gerar os destaques
-        output_video_path = generate_highlights(file_path, player_name, 10) # 10s de duração do clipe
-        
-        if output_video_path:
-            processing_status[task_id] = {'status': 'completed', 'video_path': output_video_path}
+        if dash_manifest_path:
+            print(f"[{task_id}] Processamento DASH concluído. Manifest: {dash_manifest_path}")
+            # Salva o CAMINHO RELATIVO do manifest DASH no status
+            processing_status[task_id] = {'status': 'completed', 'dash_manifest_path': dash_manifest_path}
         else:
-            processing_status[task_id] = {'status': 'failed', 'message': 'Nenhum destaque encontrado.'}
+            print(f"[{task_id}] Processamento DASH falhou: Nenhum destaque encontrado ou erro.")
+            processing_status[task_id] = {'status': 'failed', 'message': 'Nenhum destaque DASH encontrado ou erro durante a geração.'}
     except Exception as e:
-        print(f"Erro no processamento: {e}")
-        processing_status[task_id] = {'status': 'failed', 'message': f'Erro: {str(e)}'}
+        print(f"[{task_id}] Erro no processamento da tarefa: {e}")
+        processing_status[task_id] = {'status': 'failed', 'message': f'Erro interno do servidor: {str(e)}'}
     finally:
-        # Opcional: remover o arquivo original após o processamento
         if os.path.exists(file_path):
             os.remove(file_path)
+            print(f"[{task_id}] Arquivo de upload original '{file_path}' removido.")
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'video' not in request.files:
-        return jsonify({'success': False, 'message': 'Nenhum arquivo enviado'}), 400
+        return jsonify({'success': False, 'message': 'Nenhum arquivo de vídeo enviado'}), 400
     
     file = request.files['video']
     player_name = request.form.get('player_name')
@@ -53,12 +63,11 @@ def upload_file():
     filename = file.filename
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
+    print(f"Arquivo '{filename}' salvo em '{file_path}'")
     
-    # Gera um ID único para a tarefa
     task_id = os.urandom(16).hex()
-    processing_status[task_id] = {'status': 'processing'}
+    processing_status[task_id] = {'status': 'processing', 'message': 'Iniciando análise e conversão para DASH...'}
     
-    # Inicia o processamento do vídeo em uma thread separada para não travar a interface
     thread = threading.Thread(target=process_video_task, args=(file_path, player_name, task_id))
     thread.start()
     
@@ -66,14 +75,17 @@ def upload_file():
 
 @app.route('/status/<task_id>')
 def get_status(task_id):
-    """Verifica o status de uma tarefa de processamento."""
-    status = processing_status.get(task_id, {'status': 'not_found'})
+    status = processing_status.get(task_id, {'status': 'not_found', 'message': 'Tarefa não encontrada.'})
     return jsonify(status)
 
-@app.route('/highlights/<path:filename>')
-def serve_highlights(filename):
-    """Serve o vídeo de destaques para o usuário."""
-    return send_file(filename, mimetype='video/mp4', as_attachment=False)
+@app.route('/dash/<task_id>/<path:filename>')
+def serve_dash_files(task_id, filename):
+    """
+    Serve os arquivos DASH (manifests .mpd e segmentos .m4s) para o player.
+    """
+    directory = os.path.join(app.config['DASH_OUTPUT_FOLDER'], task_id)
+    print(f"Servindo DASH: {filename} do diretório {directory}")
+    return send_from_directory(directory, filename)
 
 if __name__ == '__main__':
     app.run(debug=True)
