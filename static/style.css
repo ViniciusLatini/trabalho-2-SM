@@ -8,22 +8,22 @@ body {
     margin: 0;
 
     background-image: url('cs2_background.jpeg');
-    background-size: cover; /* Faz a imagem cobrir todo o fundo */
-    background-position: center; /* Centraliza a imagem */
-    background-repeat: no-repeat; /* Evita que a imagem se repita */
-    background-color: rgba(0, 0, 0, 0.7); /* Cor de fallback e escurecimento inicial */
-    background-blend-mode: multiply; /* Mistura a cor com a imagem para escurecer */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: rgba(0, 0, 0, 0.7); 
+    background-blend-mode: multiply;
 }
 
 .container {
-    background-color: rgba(35, 39, 42, 0.9); /* Aumenta a transparência do container para ver o fundo */
+    background-color: rgba(35, 39, 42, 0.9);
     padding: 40px;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); /* Sombra mais forte para destacar */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); 
     text-align: center;
     width: 90%;
     max-width: 600px;
-    backdrop-filter: blur(5px); /* Efeito de vidro fosco, opcional, mas bem elegante */
+    backdrop-filter: blur(5px);
 }
 
 h1 {
@@ -94,7 +94,7 @@ button:disabled {
     margin-top: 30px;
     padding: 20px;
     border-radius: 8px;
-    background-color: rgba(44, 47, 51, 0.8); /* Ajusta a opacidade para ver o fundo */
+    background-color: rgba(44, 47, 51, 0.8);
 }
 
 .hidden {

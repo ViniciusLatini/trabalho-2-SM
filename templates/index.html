@@ -24,11 +24,10 @@
         <div id="statusSection" class="hidden">
             <div id="loading">
                 <div class="spinner"></div>
-                <p>Analisando o vídeo e preparando o streaming DASH, por favor aguarde...</p>
+                <p>Analisando o vídeo e preparando o streaming, por favor aguarde...</p>
             </div>
             <div id="result" class="hidden">
-                <h2>Seus Destaques (Streaming DASH):</h2>
-                <!-- O elemento video não precisa de src inicial, dash.js vai preencher -->
+                <h2>Seus Destaques:</h2>
                 <video id="highlightVideo" controls></video> 
             </div>
             <div id="error" class="hidden">
@@ -38,7 +37,6 @@
         </div>
     </div>
 
-    <!-- Inclui a biblioteca dash.js -->
     <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
     <script>
         document.getElementById('uploadForm').addEventListener('submit', function(event) {
@@ -84,13 +82,11 @@
                     .then(data => {
                         if (data.status === 'completed') {
                             clearInterval(statusInterval);
-                            // data.dash_manifest_path conterá algo como "task_id/master.mpd"
                             showResult(`/dash/${data.dash_manifest_path}`); 
                         } else if (data.status === 'failed') {
                             clearInterval(statusInterval);
                             showError(data.message || 'O processamento falhou.');
                         } else {
-                            // Opcional: atualizar a mensagem de loading para o usuário
                             // console.log(`Status para ${taskId}: ${data.status}`);
                         }
                     })
@@ -99,7 +95,7 @@
                         showError('Erro ao verificar o status do processamento.');
                         console.error('Erro:', error);
                     });
-            }, 3000); // Checa a cada 3 segundos
+            }, 3000);
         }
 
         function showResult(dashManifestUrl) {
@@ -110,10 +106,9 @@
             loadingDiv.classList.add('hidden');
             resultDiv.classList.remove('hidden');
 
-            // Lógica para inicializar o dash.js
             if (dashjs.supportsMediaSource()) {
                 var player = dashjs.MediaPlayer().create();
-                player.initialize(video, dashManifestUrl, true); // (video element, MPD URL, autoPlay)
+                player.initialize(video, dashManifestUrl, true);
                 
                 player.on(dashjs.MediaPlayer.events.ERROR, function(e) {
                     console.error("Erro DASH:", e);

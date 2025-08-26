@@ -2,12 +2,12 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import threading
 from highlights_generator import generate_highlights
-import time # Para simular o tempo de processamento, pode ser removido depois
+import time
 import shutil
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['DASH_OUTPUT_FOLDER'] = 'dash_output/' # Nova pasta para saída DASH
+app.config['DASH_OUTPUT_FOLDER'] = 'dash_output/'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['DASH_OUTPUT_FOLDER'], exist_ok=True)
@@ -25,18 +25,16 @@ def process_video_task(file_path, player_name, task_id):
     """
     try:
         print(f"[{task_id}] Iniciando processamento do vídeo: {file_path}")
-        # generate_highlights retornará o caminho relativo do master.mpd (ex: "task_id/master.mpd")
         dash_manifest_path = generate_highlights(
             video_input_path=file_path, 
             player_name=player_name, 
             clip_duration=10, 
             task_id=task_id,
-            dash_base_output_dir=app.config['DASH_OUTPUT_FOLDER'] # Passa a pasta base para DASH
+            dash_base_output_dir=app.config['DASH_OUTPUT_FOLDER']
         )
         
         if dash_manifest_path:
             print(f"[{task_id}] Processamento DASH concluído. Manifest: {dash_manifest_path}")
-            # Salva o CAMINHO RELATIVO do manifest DASH no status
             processing_status[task_id] = {'status': 'completed', 'dash_manifest_path': dash_manifest_path}
         else:
             print(f"[{task_id}] Processamento DASH falhou: Nenhum destaque encontrado ou erro.")
@@ -80,9 +78,6 @@ def get_status(task_id):
 
 @app.route('/dash/<task_id>/<path:filename>')
 def serve_dash_files(task_id, filename):
-    """
-    Serve os arquivos DASH (manifests .mpd e segmentos .m4s) para o player.
-    """
     directory = os.path.join(app.config['DASH_OUTPUT_FOLDER'], task_id)
     print(f"Servindo DASH: {filename} do diretório {directory}")
     return send_from_directory(directory, filename)

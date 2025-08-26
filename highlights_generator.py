@@ -4,9 +4,7 @@ import subprocess
 import os
 import shutil
 
-# --- ATENÇÃO: SUBSTITUA ESTE CAMINHO PELO SEU CAMINHO REAL DO TESSERACT OCR NO WINDOWS ---
-# Exemplo: r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-# Este caminho é CRÍTICO para o funcionamento do OCR no Windows
+# Utilize esse caminho para o funcionamento do OCR no Windows, comente se necessário
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def detect_kill_events(video_path, player_name):
@@ -24,7 +22,6 @@ def detect_kill_events(video_path, player_name):
     video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # Calcula a região do canto superior direito (killfeed)
     x = int(video_width * 0.80)
     y = int(video_height * 0.10)
     w = int(video_width * 0.19)
@@ -40,7 +37,7 @@ def detect_kill_events(video_path, player_name):
         return []
 
     kill_timestamps = []
-    last_kill_time = -10  # Cooldown para evitar detecções duplicadas do mesmo evento (5 segundos)
+    last_kill_time = -10
 
     frame_count = 0
     frames_to_skip = max(1, int(fps / 2)) 
@@ -74,7 +71,7 @@ def detect_kill_events(video_path, player_name):
                         last_kill_time = current_time_sec
 
             except Exception as e:
-                # print(f"Erro no OCR em {formatted_time}: {e}")
+                # print(f"Erro no OCR em {formatted_time}: {e}") # Descomente para depurar o texto lido
                 pass
 
         frame_count += 1
@@ -159,22 +156,19 @@ def concatenate_clips(clip_files, output_final_path):
 
 def convert_to_dash(input_mp4_path, output_dash_dir):
     """
-    Converte um arquivo MP4 em formato DASH (fragmented MP4 segments e MPD manifest).
-    Para simplicidade, gera uma única representação (qualidade).
+    Converte um arquivo MP4 em formato DASH
     """
     print(f"Convertendo '{input_mp4_path}' para DASH na pasta '{output_dash_dir}'...")
     os.makedirs(output_dash_dir, exist_ok=True)
     
-    # O nome do MPD será apenas 'master.mpd' quando estivermos dentro de 'output_dash_dir'
     output_mpd_filename = 'master.mpd'
-    # O caminho completo para o MPD para retorno e referência
     full_output_mpd_path = os.path.join(output_dash_dir, output_mpd_filename)
     
     command = [
         'ffmpeg',
         '-i', input_mp4_path,
         '-f', 'dash',
-        '-map', '0:v', '-map', '0:a?', # Adicionado '?' para tornar o áudio opcional
+        '-map', '0:v', '-map', '0:a?',
         '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', 
         '-c:a', 'aac', '-b:a', '128k', 
         '-adaptation_sets', 'id=0,streams=v id=1,streams=a',
@@ -184,18 +178,15 @@ def convert_to_dash(input_mp4_path, output_dash_dir):
         '-use_timeline', '1',
         '-init_seg_name', 'init-$RepresentationID$.m4s',
         '-media_seg_name', 'segment-$RepresentationID$-$Number%05d$.m4s',
-        output_mpd_filename # Usamos apenas o nome do arquivo aqui
+        output_mpd_filename
     ]
 
     print(f"\n--- DEBUG FFmpeg: Comando a ser executado ---\n{' '.join(command)}\n--- FIM DEBUG ---\n")
     
     original_cwd = os.getcwd()
     try:
-        # Muda o diretório de trabalho para a pasta onde os arquivos DASH devem ser criados
         os.chdir(output_dash_dir)
         print(f"Diretório de trabalho atual alterado para: {os.getcwd()}")
-        
-        # Executa o comando FFmpeg no novo diretório de trabalho
         subprocess.run(command, check=True) 
         print(f"Conversão para DASH concluída. Manifest em: {full_output_mpd_path}")
         return full_output_mpd_path
@@ -203,7 +194,6 @@ def convert_to_dash(input_mp4_path, output_dash_dir):
         print(f"Erro ao converter para DASH: {e}")
         return None
     finally:
-        # Restaura o diretório de trabalho original
         os.chdir(original_cwd)
         print(f"Diretório de trabalho restaurado para: {os.getcwd()}")
 
@@ -228,13 +218,10 @@ def generate_highlights(video_input_path, player_name, clip_duration, task_id, d
     Retorna o caminho relativo para o arquivo DASH master.mpd.
     """
     concatenated_mp4_filename = f"concatenated_highlights_{task_id}.mp4"
-    # Usamos os.path.join para garantir o caminho completo para o arquivo MP4 concatenado
-    # na pasta do projeto principal, antes de passar para a conversão DASH.
     concatenated_mp4_path = os.path.join(os.getcwd(), concatenated_mp4_filename)
 
     temp_clips_dir = os.path.join(os.getcwd(), f"temp_clips_{task_id}")
 
-    # Define o diretório de saída para os arquivos DASH para esta tarefa específica
     dash_output_task_dir = os.path.join(dash_base_output_dir, task_id)
 
     try:
@@ -255,17 +242,13 @@ def generate_highlights(video_input_path, player_name, clip_duration, task_id, d
         if not os.path.exists(concatenated_mp4_path):
             print("Erro: Vídeo concatenado MP4 não foi criado.")
             return None
-        
-        # Converte para DASH; a função agora garante que os arquivos estão na pasta correta
+
         dash_manifest_path_abs = convert_to_dash(concatenated_mp4_path, dash_output_task_dir)
 
         if not dash_manifest_path_abs:
             print("Erro: Conversão para DASH falhou.")
             return None
         
-        # Retorna o caminho RELATIVO ao diretório dash_base_output_dir
-        # Ex: "TASK_ID/master.mpd"
-        # O basename de dash_manifest_path_abs é "master.mpd"
         return os.path.join(task_id, os.path.basename(dash_manifest_path_abs))
     
     except Exception as e:
