@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Highlight Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>CS2 Highlight Generator</h1>
+        <form id="uploadForm">
+            <div class="input-group">
+                <label for="video">Selecione o vídeo:</label>
+                <input type="file" id="video" name="video" accept="video/mp4" required>
+            </div>
+            <div class="input-group">
+                <label for="player_name">Nome do jogador (ex: donk):</label>
+                <input type="text" id="player_name" name="player_name" required>
+            </div>
+            <button type="submit" id="submitBtn">Gerar Destaques</button>
+        </form>
+
+        <div id="statusSection" class="hidden">
+            <div id="loading">
+                <div class="spinner"></div>
+                <p>Analisando o vídeo e preparando o streaming, por favor aguarde...</p>
+            </div>
+            <div id="result" class="hidden">
+                <h2>Seus Destaques:</h2>
+                <video id="highlightVideo" controls></video> 
+            </div>
+            <div id="error" class="hidden">
+                <p id="errorMessage"></p>
+                <button onclick="window.location.reload()">Tentar Novamente</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const statusSection = document.getElementById('statusSection');
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const submitBtn = document.getElementById('submitBtn');
+
+            submitBtn.disabled = true;
+            statusSection.classList.remove('hidden');
+            loadingDiv.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            document.getElementById('errorMessage').textContent = ''; 
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    checkStatus(data.task_id);
+                } else {
+                    showError(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('Erro ao enviar o arquivo. Verifique sua conexão ou tente novamente.');
+            });
+        });
+
+        function checkStatus(taskId) {
+            const statusInterval = setInterval(() => {
+                fetch(`/status/${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'completed') {
+                            clearInterval(statusInterval);
+                            showResult(`/dash/${data.dash_manifest_path}`); 
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusInterval);
+                            showError(data.message || 'O processamento falhou.');
+                        } else {
+                            // console.log(`Status para ${taskId}: ${data.status}`);
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(statusInterval);
+                        showError('Erro ao verificar o status do processamento.');
+                        console.error('Erro:', error);
+                    });
+            }, 3000);
+        }
+
+        function showResult(dashManifestUrl) {
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            const video = document.getElementById('highlightVideo');
+
+            loadingDiv.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+
+            if (dashjs.supportsMediaSource()) {
+                var player = dashjs.MediaPlayer().create();
+                player.initialize(video, dashManifestUrl, true);
+                
+                player.on(dashjs.MediaPlayer.events.ERROR, function(e) {
+                    console.error("Erro DASH:", e);
+                    showError(`Erro de streaming DASH. Detalhes: ${e.error.message}`);
+                    player.reset();
+                });
+            } else {
+                showError('Seu navegador não suporta MediaSource Extensions ou DASH. Tente um navegador mais recente (ex: Chrome, Firefox, Edge).');
+            }
+        }
+
+        function showError(message) {
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = document.getElementById('submitBtn');
+
+            loadingDiv.classList.add('hidden');
+            errorDiv.classList.remove('hidden');
+            errorMessage.textContent = message;
+            submitBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
