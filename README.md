@@ -4,22 +4,6 @@ Este projeto é um gerador de melhores momentos (highlights) para partidas de Co
 
 ---
 
-## ✨ Funcionalidades
-
-* **Upload de Vídeo**: Interface web simples para enviar vídeos de partidas de CS2 (formato MP4).
-
-* **Detecção de Eliminações (Killfeed)**: Utiliza **Processamento de Imagens (OpenCV)** e **Reconhecimento Óptico de Caracteres (Tesseract OCR)** para identificar o nome de um jogador no killfeed do vídeo.
-
-* **Geração de Clipes**: Corta o vídeo original para criar pequenos clipes ao redor de cada evento de eliminação detectado, usando **FFmpeg**.
-
-* **Concatenação de Clipes**: Junta todos os clipes individuais em um único vídeo de melhores momentos.
-
-* **Streaming Adaptativo DASH**: Converte o vídeo final para o formato DASH, permitindo a reprodução otimizada para diferentes condições de rede diretamente no navegador via `dash.js`.
-
-* **Interface Amigável**: Design elegante e responsivo, com tela de carregamento para uma boa experiência do usuário.
-
----
-
 ## 💻 Tecnologias Utilizadas
 
 ### Backend (Python)
@@ -100,21 +84,3 @@ Siga estas etapas para configurar e executar o projeto:
     python app.py
     ```
     O servidor estará rodando em `http://127.0.0.1:5000`.
-
----
-
-## 🎮 Como Usar
-
-1.  **Acesse a Aplicação**: Abra seu navegador e vá para `http://127.0.0.1:5000`.
-
-2.  **Faça o Upload do Vídeo**:
-    * Clique em "Selecione o vídeo" e escolha um arquivo MP4 de uma partida de CS2.
-    * No campo "Nome do jogador", digite o **nickname exato** do jogador cujos *highlights* você quer detectar (ex: `donk`, `coldzera`).
-
-3.  **Gerar Destaques**: Clique no botão "Gerar Destaques".
-
-4.  **Aguarde o Processamento**: Uma tela de carregamento aparecerá enquanto o vídeo é analisado, os clipes são gerados e convertidos para DASH. Esse processo pode levar alguns minutos, dependendo do tamanho do vídeo e da velocidade do seu computador.
-
-5.  **Assista aos Destaques**: Assim que o processamento for concluído, o vídeo de melhores momentos será carregado e iniciado em **streaming DASH** diretamente na página!
-
----
